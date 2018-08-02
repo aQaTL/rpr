@@ -16,7 +16,7 @@ var Command = flag.String("cmd", "", "Command to run on detected connection")
 func main() {
 	checkFlags()
 
-	re := &RemoteExecutor{*Command}
+	re := &CommandExecutor{*Command}
 
 	mux := http.NewServeMux()
 	mux.Handle("/", re)
@@ -42,10 +42,19 @@ func checkFlags() {
 	}
 }
 
-type RemoteExecutor struct {
+type RemoteExecutor interface {
+	Execute() error
+}
+
+type CommandExecutor struct {
 	Command string
 }
 
-func (re *RemoteExecutor) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (re *CommandExecutor) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	go exec.Command(re.Command).Run()
+}
+
+func (re *CommandExecutor) Execute() error {
+	go exec.Command(re.Command).Run()
+	return nil
 }
