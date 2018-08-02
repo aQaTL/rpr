@@ -1,12 +1,14 @@
 package main
 
 import (
-	"net/http"
 	"flag"
-	"log"
 	"fmt"
-	"regexp"
+	"log"
+	"net/http"
+	"os"
 	"os/exec"
+	"regexp"
+	"strings"
 )
 
 var Address = flag.String("address", "127.0.0.1", "IP address from which the app listens")
@@ -16,7 +18,8 @@ var Command = flag.String("cmd", "", "Command to run on detected connection")
 func main() {
 	checkFlags()
 
-	re := &CommandExecutor{*Command}
+	cmd := strings.Split(*Command, " ")
+	re := &CommandExecutor{cmd[0], cmd[1:]}
 
 	mux := http.NewServeMux()
 	mux.Handle("/", re)
@@ -42,19 +45,18 @@ func checkFlags() {
 	}
 }
 
-type RemoteExecutor interface {
-	Execute() error
-}
-
 type CommandExecutor struct {
 	Command string
+	Args    []string
 }
 
 func (re *CommandExecutor) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	go exec.Command(re.Command).Run()
+	go re.Execute()
 }
 
-func (re *CommandExecutor) Execute() error {
-	go exec.Command(re.Command).Run()
-	return nil
+func (re *CommandExecutor) Execute() {
+	err := exec.Command(re.Command, re.Args...).Run()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Command: [%s] args: %v returned: %v\n", re.Command, re.Args, err)
+	}
 }
